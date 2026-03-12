@@ -7,6 +7,7 @@ These are NOT sensitive - just pointers to files
 MAIN_FOLDER_ID = '1RQq8CeIV1GQEnp2SUzbDTjWA9XGAuiv1'  # Your THM_Survey_Data folder
 RAW_FOLDER_ID    = '1Cykif6XmVtx96FCvKmnjBsjXOsA-xNVB'     # ← where your CSVs live
 OUTPUT_FOLDER_ID = '1BidjiWkUOWtZBfq-3z1b9IzLpWmYvrG8'    # ← where results get saved
+PREPROCESSED_DATA_FOLDER_ID = '1Ux3EyqnDRLDJPGOFEqnBi8ivW220Ye_w'   # ← where preprocessed data will be saved
 
 # File IDs
 GDRIVE_FILES = {
