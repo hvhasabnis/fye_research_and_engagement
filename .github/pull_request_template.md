@@ -16,10 +16,6 @@
 ## Notebooks Modified
 - [ ] `00_setup_check.ipynb`
 - [ ] `01_eda.ipynb`
-- [ ] `02_text_preprocessing.ipynb`
-- [ ] `03_sentiment_analysis.ipynb`
-- [ ] `04_topic_modeling.ipynb`
-- [ ] `05_keyword_extraction.ipynb`
 - [ ] None
 
 ---
