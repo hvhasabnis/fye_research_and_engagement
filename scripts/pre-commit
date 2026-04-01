@@ -1,0 +1,126 @@
+#!/bin/sh
+# ══════════════════════════════════════════════════════════════════════
+# FYE RESEARCH — PRE-COMMIT SECURITY HOOK
+# ══════════════════════════════════════════════════════════════════════
+# This hook BLOCKS commits containing sensitive files.
+#
+# INSTALL: cp scripts/pre-commit .git/hooks/pre-commit
+# ══════════════════════════════════════════════════════════════════════
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "🔒 Security scan starting..."
+echo ""
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ -z "$STAGED" ]; then
+    echo "${GREEN}✓ No files staged${NC}"
+    exit 0
+fi
+
+ERRORS=0
+
+# ══════════════════════════════════════════════════════════════════════
+# CHECK 1: Credential files (BLOCK)
+# ══════════════════════════════════════════════════════════════════════
+CRED_FILES=$(echo "$STAGED" | grep -iE "(client_secrets|token|credentials|secrets|service_account).*\.json$|\.env$|\.pem$|\.key$" || true)
+
+if [ -n "$CRED_FILES" ]; then
+    echo "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo "${RED}║  ❌ BLOCKED: CREDENTIAL FILES DETECTED                       ║${NC}"
+    echo "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "$CRED_FILES" | while read -r file; do
+        echo "   ${RED}✗${NC} $file"
+    done
+    echo ""
+    echo "   These files contain sensitive authentication data."
+    echo "   They must NEVER be committed to the repository."
+    echo ""
+    ERRORS=1
+fi
+
+# ══════════════════════════════════════════════════════════════════════
+# CHECK 2: Data files (BLOCK)
+# ══════════════════════════════════════════════════════════════════════
+DATA_FILES=$(echo "$STAGED" | grep -iE "\.(csv|xlsx|xls|parquet|pickle|pkl|h5|hdf5|feather)$" || true)
+
+if [ -n "$DATA_FILES" ]; then
+    echo "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo "${RED}║  ❌ BLOCKED: DATA FILES DETECTED                             ║${NC}"
+    echo "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "$DATA_FILES" | while read -r file; do
+        echo "   ${RED}✗${NC} $file"
+    done
+    echo ""
+    echo "   Data files belong on Google Drive, not in Git."
+    echo ""
+    ERRORS=1
+fi
+
+# ══════════════════════════════════════════════════════════════════════
+# CHECK 3: Auth directory (BLOCK)
+# ══════════════════════════════════════════════════════════════════════
+AUTH_FILES=$(echo "$STAGED" | grep -E "^auth/" | grep -v "README" || true)
+
+if [ -n "$AUTH_FILES" ]; then
+    echo "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo "${RED}║  ❌ BLOCKED: FILES IN AUTH/ DIRECTORY                        ║${NC}"
+    echo "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "$AUTH_FILES" | while read -r file; do
+        echo "   ${RED}✗${NC} $file"
+    done
+    echo ""
+    echo "   Only README.md is allowed in the auth/ directory."
+    echo ""
+    ERRORS=1
+fi
+
+# ══════════════════════════════════════════════════════════════════════
+# CHECK 4: Hardcoded secrets in code (BLOCK)
+# ══════════════════════════════════════════════════════════════════════
+CODE_FILES=$(echo "$STAGED" | grep -E "\.(py|ipynb)$" || true)
+
+if [ -n "$CODE_FILES" ]; then
+    for file in $CODE_FILES; do
+        # Check for potential Google Drive file IDs (33+ char alphanumeric in quotes)
+        HARDCODED=$(git diff --cached "$file" | grep -E "^\\+" | grep -oE "['\"][a-zA-Z0-9_-]{33,}['\"]" | head -5 || true)
+        
+        if [ -n "$HARDCODED" ]; then
+            echo "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
+            echo "${YELLOW}║  ⚠️  WARNING: POSSIBLE HARDCODED IDS IN $file${NC}"
+            echo "${YELLOW}╚══════════════════════════════════════════════════════════════╝${NC}"
+            echo ""
+            echo "   Found strings that look like Google Drive file IDs."
+            echo "   Use config.py imports instead of hardcoding."
+            echo ""
+        fi
+    done
+fi
+
+# ══════════════════════════════════════════════════════════════════════
+# RESULT
+# ══════════════════════════════════════════════════════════════════════
+
+if [ $ERRORS -eq 1 ]; then
+    echo ""
+    echo "${RED}══════════════════════════════════════════════════════════════${NC}"
+    echo "${RED}  COMMIT BLOCKED — Fix issues above, then try again${NC}"
+    echo "${RED}══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "  To unstage a file:  git reset HEAD <file>"
+    echo "  To see staged:      git diff --cached --name-only"
+    echo ""
+    exit 1
+fi
+
+echo "${GREEN}══════════════════════════════════════════════════════════════${NC}"
+echo "${GREEN}  ✓ Security scan passed${NC}"
+echo "${GREEN}══════════════════════════════════════════════════════════════${NC}"
+exit 0
