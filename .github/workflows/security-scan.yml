@@ -153,7 +153,7 @@ jobs:
           EOF
 
   code-quality:
-    name: 🧹 Code Quality
+    name: Code Quality
     runs-on: ubuntu-latest
     
     steps:
