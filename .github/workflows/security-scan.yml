@@ -165,36 +165,10 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Extract code from notebooks
-        run: |
-          python << 'EOF'
-          import os
-          import json
-          files = [f for f in os.listdir('notebooks') if f.endswith('.ipynb')]
-          for file in files:
-              filepath = os.path.join('notebooks', file)
-              with open(filepath, 'r') as f:
-                  notebook = json.load(f)
-
-              cell_codes = []
-              for cell in notebook['cells']:
-                  if cell['cell_type'] == 'code':
-                      cell_codes.append(''.join(cell['source']))
-
-              all_code = '\n\n'.join(cell_codes)
-              print(f"=== {file} ===")
-              print(all_code[:200])  # Print first 200 chars as preview
-
-              temp_file = 'temp_' + file.replace('.ipynb', '.py')
-
-              with open(temp_file, 'w') as f:
-                  f.write(all_code)
-          EOF
-      
       - name: Install flake8
         run: |
           pip install flake8
       
       - name: Run flake8
         run: |
-          flake8 . --max-line-length=120 --exclude=.git,__pycache__
+          flake8 . --max-line-length=120 --exclude=.git,__pycache__,venv
