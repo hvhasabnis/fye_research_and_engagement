@@ -5,13 +5,13 @@
 # This is a BACKUP to the pre-commit hook.
 # ══════════════════════════════════════════════════════════════════════
 
-name: Security Scan
+name: CI Pipeline
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   security-scan:
@@ -114,3 +114,61 @@ jobs:
           fi
           
           echo "✅ Code scan complete"
+
+  notebook-validation:
+    name: Notebook Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Validate notebooks
+        run: |
+          python << 'EOF'
+          import os
+          import json
+          import sys
+          
+          files = [f for f in os.listdir('notebooks') if f.endswith('.ipynb')]
+          
+          errors = 0
+          for file in files:
+              filepath = os.path.join('notebooks', file)
+              try:
+                  with open(filepath, 'r', encoding='utf-8') as f:
+                      json.load(f)
+                  print(f"✓ {file}")
+              except Exception as e:
+                  print(f"✗ {file}: {e}")
+                  errors += 1
+          
+          if errors > 0:
+              sys.exit(1)
+          EOF
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install flake8
+        run: |
+          pip install flake8
+      
+      - name: Run flake8
+        run: |
+          flake8 . --max-line-length=120 --exclude=.git,__pycache__,venv
