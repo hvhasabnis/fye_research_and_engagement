@@ -1,0 +1,116 @@
+# ══════════════════════════════════════════════════════════════════════
+# FYE RESEARCH — SECURITY SCAN WORKFLOW
+# ══════════════════════════════════════════════════════════════════════
+# Runs on every push and PR to detect sensitive files.
+# This is a BACKUP to the pre-commit hook.
+# ══════════════════════════════════════════════════════════════════════
+
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Scan for Sensitive Files
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for scanning
+      
+      - name: Check for credential files
+        run: |
+          echo "🔒 Scanning for credential files..."
+          
+          FOUND=0
+          
+          # Check for credential files
+          CREDS=$(find . -type f \( \
+            -iname "*secret*.json" -o \
+            -iname "*token*.json" -o \
+            -iname "*credential*.json" -o \
+            -iname "*.pem" -o \
+            -iname "*.key" -o \
+            -iname ".env" -o \
+            -iname ".env.*" \
+          \) -not -path "./.git/*" 2>/dev/null || true)
+          
+          if [ -n "$CREDS" ]; then
+            echo "❌ CREDENTIAL FILES FOUND:"
+            echo "$CREDS"
+            FOUND=1
+          fi
+          
+          # Check for data files
+          DATA=$(find . -type f \( \
+            -iname "*.csv" -o \
+            -iname "*.xlsx" -o \
+            -iname "*.xls" -o \
+            -iname "*.parquet" -o \
+            -iname "*.pickle" -o \
+            -iname "*.pkl" \
+          \) -not -path "./.git/*" 2>/dev/null || true)
+          
+          if [ -n "$DATA" ]; then
+            echo "❌ DATA FILES FOUND:"
+            echo "$DATA"
+            FOUND=1
+          fi
+          
+          # Check auth directory
+          AUTH=$(find ./auth -type f -not -name "README.md" -not -name ".gitkeep" 2>/dev/null || true)
+          
+          if [ -n "$AUTH" ]; then
+            echo "❌ SENSITIVE FILES IN AUTH/ DIRECTORY:"
+            echo "$AUTH"
+            FOUND=1
+          fi
+          
+          if [ $FOUND -eq 1 ]; then
+            echo ""
+            echo "══════════════════════════════════════════════════════════════"
+            echo "  ❌ SECURITY SCAN FAILED"
+            echo "══════════════════════════════════════════════════════════════"
+            echo ""
+            echo "  Sensitive files detected in the repository."
+            echo "  These must be removed from Git history."
+            echo ""
+            echo "  See: docs/SECURITY.md for remediation steps."
+            echo ""
+            exit 1
+          fi
+          
+          echo "✅ No sensitive files found"
+      
+      - name: Check for hardcoded secrets in code
+        run: |
+          echo "🔍 Scanning code for potential secrets..."
+          
+          # Look for patterns that might be secrets
+          # This is a basic check - consider using dedicated tools like gitleaks
+          
+          SUSPICIOUS=$(grep -rn --include="*.py" --include="*.ipynb" \
+            -E "['\"][A-Za-z0-9_-]{33,}['\"]" . \
+            --exclude-dir=".git" \
+            --exclude-dir="__pycache__" \
+            2>/dev/null | \
+            grep -v "GDRIVE_FILES" | \
+            grep -v "from config" | \
+            grep -v "import config" | \
+            head -20 || true)
+          
+          if [ -n "$SUSPICIOUS" ]; then
+            echo "⚠️ WARNING: Possible hardcoded IDs found:"
+            echo "$SUSPICIOUS"
+            echo ""
+            echo "Please verify these are not sensitive values."
+            echo "Use config.py for Google Drive file IDs."
+          fi
+          
+          echo "✅ Code scan complete"
