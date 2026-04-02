@@ -116,7 +116,7 @@ jobs:
           echo "✅ Code scan complete"
 
   notebook-validation:
-    name: 📓 Notebook Validation
+    name: Notebook Validation
     runs-on: ubuntu-latest
     
     steps:
@@ -151,3 +151,50 @@ jobs:
           if errors > 0:
               sys.exit(1)
           EOF
+
+  code-quality:
+    name: 🧹 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Extract code from notebooks
+        run: |
+          python << 'EOF'
+          import os
+          import json
+          files = [f for f in os.listdir('notebooks') if f.endswith('.ipynb')]
+          for file in files:
+              filepath = os.path.join('notebooks', file)
+              with open(filepath, 'r') as f:
+                  notebook = json.load(f)
+
+              code_lines = []
+              for cell in notebook['cells']:
+                  if cell['cell_type'] == 'code':
+                      code_lines.extend(cell['source'])
+
+              all_code = ''.join(code_lines)
+              print(f"=== {file} ===")
+              print(all_code[:200])  # Print first 200 chars as preview
+
+              temp_file = 'temp_' + file.replace('.ipynb', '.py')
+
+              with open(temp_file ,  'w') as f:
+                  f.write(all_code)
+          EOF
+      
+      - name: Install flake8
+        run: |
+          pip install flake8
+      
+      - name: Run flake8
+        run: |
+          flake8 . --max-line-length=120 --exclude=.git,__pycache__
