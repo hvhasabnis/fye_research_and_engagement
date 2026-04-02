@@ -10,6 +10,7 @@ import io
 import os
 import requests
 
+
 class DriveDataLoader:
     """
     Authenticate users at runtime.
@@ -17,11 +18,11 @@ class DriveDataLoader:
     """
 
     def __init__(self, client_secrets_file='../auth/client_secrets.json'):
-        self.drive            = None
-        self.user_email       = None
-        self._auth_ok         = False   # ← was missing
-        self._read_ok         = False   # ← was missing
-        self._write_ok        = False   # ← was missing
+        self.drive = None
+        self.user_email = None
+        self._auth_ok = False   # ← was missing
+        self._read_ok = False   # ← was missing
+        self._write_ok = False   # ← was missing
 
         if not os.path.exists(client_secrets_file):
             raise FileNotFoundError(
@@ -83,9 +84,9 @@ class DriveDataLoader:
 
         gauth.SaveCredentialsFile("../auth/token.json")
 
-        self.drive      = GoogleDrive(gauth)
+        self.drive = GoogleDrive(gauth)
         self.user_email = self._get_user_email(gauth)
-        self._auth_ok   = True
+        self._auth_ok = True
 
         print("\n" + "=" * 60)
         print(f"✓ AUTHENTICATED AS: {self.user_email}")
@@ -115,7 +116,7 @@ class DriveDataLoader:
         if not self._auth_ok:
             self.authenticate()
 
-        read_ok  = self.verify_read_access(main_folder_id)
+        read_ok = self.verify_read_access(main_folder_id)
         write_ok = self.verify_write_access(output_folder_id)
         files_ok = self.verify_all_files(gdrive_files)
 
@@ -215,7 +216,7 @@ class DriveDataLoader:
             if mime == 'application/vnd.google-apps.spreadsheet':
                 # It's a Google Sheet — export as CSV
                 import requests
-                token    = self.drive.auth.credentials.access_token
+                token = self.drive.auth.credentials.access_token
                 export_url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv"
                 response = requests.get(
                     export_url,
@@ -249,7 +250,7 @@ class DriveDataLoader:
         except Exception as e:
             print(f"✗ Error: {e}")
             raise
-    
+
     def read_csv(self, file_id: str, label: str = "") -> pd.DataFrame:
         if label:
             print(f"  [{label}] ", end="")
@@ -272,14 +273,14 @@ class DriveDataLoader:
         )
         file_list = self.drive.ListFile({'q': query}).GetList()
         return file_list[0]['id'] if file_list else None
-    
+
     def upload_figure(self, local_path: str,
-                  folder_id: str,
-                  drive_filename: str = None) -> str:
+                      folder_id: str,
+                      drive_filename: str = None) -> str:
         """Uploads a figure to Drive, overwriting if it already exists."""
         self._require_auth()
         drive_filename = drive_filename or os.path.basename(local_path)
-        existing_id    = self._get_existing_file_id(drive_filename, folder_id)
+        existing_id = self._get_existing_file_id(drive_filename, folder_id)
 
         if existing_id:
             print(f"  ⬆  Overwriting figure: {drive_filename}...", end=" ")
@@ -294,8 +295,8 @@ class DriveDataLoader:
         return f['id']
 
     def upload_dataframe(self, df: pd.DataFrame,
-                     filename: str,
-                     folder_id: str) -> str:
+                         filename: str,
+                         folder_id: str) -> str:
         """Uploads a DataFrame as CSV to Drive, overwriting if it already exists."""
         self._require_auth()
         existing_id = self._get_existing_file_id(filename, folder_id)
@@ -315,12 +316,12 @@ class DriveDataLoader:
         return f['id']
 
     def upload_file(self, local_path: str,
-                folder_id: str,
-                drive_filename: str = None) -> str:
+                    folder_id: str,
+                    drive_filename: str = None) -> str:
         """Uploads any file to Drive, overwriting if it already exists."""
         self._require_auth()
         drive_filename = drive_filename or os.path.basename(local_path)
-        existing_id    = self._get_existing_file_id(drive_filename, folder_id)
+        existing_id = self._get_existing_file_id(drive_filename, folder_id)
 
         if existing_id:
             print(f"  ⬆  Overwriting file: {drive_filename}...", end=" ")
@@ -345,7 +346,7 @@ class DriveDataLoader:
 
     def _get_user_email(self, gauth) -> str:
         try:
-            token    = gauth.credentials.access_token
+            token = gauth.credentials.access_token
             response = requests.get(
                 'https://www.googleapis.com/oauth2/v1/userinfo',
                 headers={'Authorization': f'Bearer {token}'}
@@ -363,6 +364,6 @@ class DriveDataLoader:
         print(f"  Authenticated as : {self.user_email}")
         print(f"  Folder ID        : {folder_id}")
         print(f"  Error            : {error}")
-        print(f"\n  → Ask the project owner to share the folder with:")
+        print("\n  → Ask the project owner to share the folder with:")
         print(f"    {self.user_email}  (Editor permission for write access)")
         print(f"  {'='*60}\n")

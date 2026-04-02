@@ -176,18 +176,18 @@ jobs:
               with open(filepath, 'r') as f:
                   notebook = json.load(f)
 
-              code_lines = []
+              cell_codes = []
               for cell in notebook['cells']:
                   if cell['cell_type'] == 'code':
-                      code_lines.extend(cell['source'])
+                      cell_codes.append(''.join(cell['source']))
 
-              all_code = ''.join(code_lines)
+              all_code = '\n\n'.join(cell_codes)
               print(f"=== {file} ===")
               print(all_code[:200])  # Print first 200 chars as preview
 
               temp_file = 'temp_' + file.replace('.ipynb', '.py')
 
-              with open(temp_file ,  'w') as f:
+              with open(temp_file, 'w') as f:
                   f.write(all_code)
           EOF
       
